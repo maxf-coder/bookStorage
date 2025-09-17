@@ -1,7 +1,7 @@
 import sqlite3
 import configs
 
-def insert_book_props(book_props):
+def save_books_props(book_props):
     try:
         with sqlite3.connect(configs.db_location) as conn:
             cursor = conn.cursor()
@@ -23,6 +23,25 @@ def insert_book_props(book_props):
     except Exception as e:
         configs.db_logger.error(f"insert_book_props : {e}", exc_info=True)
 
+def save_shops_props(shops_props):
+    try:
+        with sqlite3.connect(configs.db_location) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT name FROM shops")
+            names = [n[0] for n in cursor.fetchall()]
+            for shop in shops_props:
+                if shop["name"] not in names:
+                    cursor.execute("INSERT INTO shops (name) VALUES(?)", (shop["name"], ))
+                cursor.execute("""
+                                UPDATE shops
+                                SET adress = ?,
+                                    phone_number = ?,
+                                    work_hours = ?
+                                WHERE name = ?
+                            """, (shop["adress"], shop["phone_number"], shop["work_hours"], shop["name"], ))
+    except Exception as e:
+        configs.db_logger.error(f"save_shops_props : {e}", exc_info=True)
+
 def create_tables():
     try:
         with sqlite3.connect(configs.db_location) as conn:
@@ -41,10 +60,10 @@ def create_tables():
 
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS shops(
-                        id INTEGER PRIMARY KEY,
-                        city TEXT,
+                        name TEXT UNIQUE,
                         adress TEXT,
-                        phone_number TEXT
+                        phone_number TEXT,
+                        work_hours TEXT
                         )
             """)
 
@@ -59,7 +78,8 @@ def create_tables():
                         )
             """)
     except Exception as e:
-        configs.db_logger.critical(f"create_tables : {e}", exc_info=True)
+        configs.db_logger.critical(f"{e}", exc_info=True)
+
 
 if __name__ == "__main__":
    create_tables()

@@ -6,6 +6,7 @@ import db_functions
 import configs
 from datetime import datetime
 
+
 def soup_maker(url, HEADERS = configs.default_headers, retries = 3):
     for attempt in range(retries):
         try:
@@ -44,7 +45,7 @@ def find_all_books(page_url):
             configs.scraping_logger.warning(f"find_all_books : The tag 'a' in a book card have not attribute 'href' at {page_url}")
     return books_links
 
-def book_props_save(book_url):
+def book_props(book_url):
 #checking if the request is successful
     BookSoup = soup_maker(book_url)
     if BookSoup is None:
@@ -90,16 +91,47 @@ def book_props_save(book_url):
     except AttributeError:
         props["stock_size"] = None
     
-    db_functions.insert_book_props(props)
+    return props
+
+def shop_props(shop_card):
+    props = {}
+    try:
+        props["name"] = shop_card.find("label").text.split(' ')[2]
+        divs = shop_card.find_all("div")
+        props["adress"] = divs[0].text
+        props["phone_number"] = divs[1].text.replace(" ","")
+        props["work_hours"] = divs[2].text
+    except Exception as e:
+        configs.scraping_logger.error(f"shop_props : {e}", exc_info=True)
+    return props
+
+def shops_props(url = configs.shops_url):
+#checking if the request is successful
+    shops_soup = soup_maker(url)
+    if shops_soup is None:
+        configs.scraping_logger.error(f"shops_props_save : No soup for geting shops props at {url}")
+        return None
+    
+    shops = []
+    shop_cards = shops_soup.find_all("div", class_ = "shop-item list-group-item")
+    if(len(shop_cards) == 0):
+        configs.scraping_logger.error("shops_props_save : Can't find any shops cards")
+        return []
+    
+    for shop_card in shop_cards:
+        props = shop_props(shop_card)
+        if props:
+            shops.append(props)
+    return shops
 
 if __name__ == "__main__":
     start_time = datetime.now()
 
-    current_page_url = configs.start_page_url
+    db_functions.save_shops_props(shops_props())
 
-    books_urls = find_all_books(current_page_url)
+    books_urls = find_all_books(configs.start_page_url)
     for book_url in books_urls:
-        book_props_save(book_url)
+        db_functions.save_books_props(book_props(book_url))
 
     end_time = datetime.now()
     print('Duration: {}'.format(end_time - start_time))
