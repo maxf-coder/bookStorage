@@ -45,7 +45,7 @@ def find_all_books(page_url):
             configs.scraping_logger.warning(f"find_all_books : The tag 'a' in a book card have not attribute 'href' at {page_url}")
     return books_links
 
-def book_props(book_url):
+def book(book_url):
 #checking if the request is successful
     BookSoup = soup_maker(book_url)
     if BookSoup is None:
@@ -91,7 +91,26 @@ def book_props(book_url):
     except AttributeError:
         props["stock_size"] = None
     
-    return props
+#geting book's disponibility
+    disp = {}
+
+    if props["stock_size"] == None or props["stock_size"] == "Stoc epuizat":
+        return props, disp
+    try:
+        disp_table = BookSoup.find("table", class_ = "table table-striped").find("tbody")
+        shop_rows = disp_table.find_all("tr")
+    except Exception as e:
+        configs.scraping_logger.error(f"Can't find disponibility at {book_url} : {e}", exc_info=True)
+        return props, disp
+    
+    for row in shop_rows:
+        try:
+            tds = row.find_all("td")
+            disp[tds[0].text.split()[1]] = tds[2].text.strip()
+        except Exception as e:
+            configs.scraping_logger.warning(f"Book: {book_url} : {e}", exc_info=True)
+
+    return props, disp
 
 def shop_props(shop_card):
     props = {}
@@ -131,7 +150,7 @@ if __name__ == "__main__":
 
     books_urls = find_all_books(configs.start_page_url)
     for book_url in books_urls:
-        db_functions.save_books_props(book_props(book_url))
+        db_functions.save_books_props(book(book_url))
 
     end_time = datetime.now()
     print('Duration: {}'.format(end_time - start_time))

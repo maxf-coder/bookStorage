@@ -1,25 +1,34 @@
 import sqlite3
 import configs
 
-def save_books_props(book_props):
+def save_books_props(book):
+    props, disp = book
     try:
         with sqlite3.connect(configs.db_location) as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT 1 FROM books WHERE id = ?", (book_props["id"],))
+            cursor.execute("SELECT 1 FROM books WHERE id = ?", (props["id"],))
             if cursor.fetchone() == None:
-                cursor.execute("INSERT INTO books (id) VALUES(?)", (book_props["id"],))
+                cursor.execute("INSERT INTO books (id) VALUES(?)", (props["id"],))
             
             cursor.execute("PRAGMA table_info(books)")
             existing_cols = [col[1] for col in cursor.fetchall()]
             
-            for key, value in book_props.items():
+            for key, value in props.items():
                 if key not in existing_cols:
                     cursor.execute(f'ALTER TABLE books ADD COLUMN "{key}" TEXT')
                 cursor.execute(f"""
                     UPDATE books
                     SET "{key}" = ?
                     WHERE id = ?
-                """, (value, book_props["id"]))
+                """, (value, props["id"]))
+            conn.commit()
+
+            for shop, disponibility in disp.items():
+                cursor.execute("""
+                               INSERT INTO book_shop (book_id, shop_name, stock_size)
+                               VALUES(?,?,?)
+                               ON CONFLICT(book_id, shop_name) DO UPDATE
+                               SET stock_size = excluded.stock_size""", (props["id"], shop, disponibility))
     except Exception as e:
         configs.db_logger.error(f"insert_book_props : {e}", exc_info=True)
 
@@ -60,7 +69,7 @@ def create_tables():
 
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS shops(
-                        name TEXT UNIQUE,
+                        name TEXT PRIMARY KEY,
                         adress TEXT,
                         phone_number TEXT,
                         work_hours TEXT
@@ -70,11 +79,11 @@ def create_tables():
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS book_shop(
                         book_id INTEGER,
-                        shop_id INTEGER,
+                        shop_name TEXT,
                         stock_size TEXT,
                         FOREIGN KEY (book_id) REFERENCES books(id),
-                        FOREIGN KEY (shop_id) REFERENCES shops(id),
-                        PRIMARY KEY (book_id, shop_id)
+                        FOREIGN KEY (shop_name) REFERENCES shops(name),
+                        PRIMARY KEY (book_id, shop_name)
                         )
             """)
     except Exception as e:
