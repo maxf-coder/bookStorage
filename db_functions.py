@@ -60,7 +60,9 @@ def create_tables():
                 CREATE TABLE IF NOT EXISTS books(
                         id INTEGER PRIMARY KEY,
                         name TEXT,
-                        price INTEGER,
+                        price REAL,
+                        old_price REAL,
+                        discount INTEGER,
                         img_src TEXT,
                         url TEXT,
                         stock_size TEXT

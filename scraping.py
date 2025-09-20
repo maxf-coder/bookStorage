@@ -74,8 +74,16 @@ def book(book_url):
 #geting book's PRICE
     try:
         price_card_text = BookSoup.find("div", class_ = "product-book-price__actual").text
-        price = int("".join(re.findall(r"\d+", price_card_text)))
-        props["price"] = price
+        numbers = [n.replace(",", ".") for n in re.findall(r"\d+[\.,]?\d*", price_card_text)]
+        if len(numbers) == 1:
+            props["price"] = float(numbers[0])
+        elif len(numbers) == 3:
+            props["price"] = float(numbers[2])
+            props["old_price"] = float(numbers[0])
+            props["discount"] = int(numbers[1])
+        else:
+            configs.db_logger.warning(f"book : Unknown price_card type at {book_url}")
+            props["price"] = None
     except AttributeError:
         props["price"] = None
 #geting book's URL from librarius
@@ -83,7 +91,7 @@ def book(book_url):
 #geting book's IMG source
     try:
         props["img_src"] = BookSoup.find("img", class_ = "product-image")["src"]
-    except AttributeError:
+    except (AttributeError, TypeError):
         props["img_src"] = None
 #geting book's STOCK SIZE
     try:
