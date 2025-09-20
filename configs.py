@@ -1,3 +1,4 @@
+import os
 import logging
 from logging.handlers import RotatingFileHandler
 
@@ -10,15 +11,18 @@ default_headers = {'User-Agent' : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) App
 
 db_location = "Books_Storage/booksDB.db"
 
+logs_location = "Books_Storage/logs"
+os.makedirs(logs_location, exist_ok=True)
+
 scraping_logger = logging.getLogger("scraping_logger")
 scraping_logger.setLevel(logging.INFO)
 fileFormater = logging.Formatter("%(asctime)s : %(levelname)s : %(message)s")
-scraping_fileHandler = RotatingFileHandler("Books_Storage/logs/scraping_logs/scraping.log", maxBytes=1024, backupCount=5)
+scraping_fileHandler = RotatingFileHandler("Books_Storage/logs/scraping.log", maxBytes=1024, backupCount=5)
 scraping_fileHandler.setFormatter(fileFormater)
 scraping_logger.addHandler(scraping_fileHandler)
 
 db_logger = logging.getLogger("db_logger")
 db_logger.setLevel(logging.INFO)
-db_fileHandler = RotatingFileHandler("Books_Storage/logs/db_logs/database.log", maxBytes=1024, backupCount=5)
+db_fileHandler = RotatingFileHandler("Books_Storage/logs/database.log", maxBytes=1024, backupCount=5)
 db_fileHandler.setFormatter(fileFormater) 
 db_logger.addHandler(db_fileHandler)
